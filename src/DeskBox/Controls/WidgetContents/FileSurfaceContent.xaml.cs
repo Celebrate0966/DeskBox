@@ -1359,6 +1359,16 @@ public sealed partial class FileSurfaceContent :
         e.Data.RequestedOperation =
             FileItemDragPackage.ResolveDragOutPreferredOperation(
                 _settingsService.Settings.FileWidget.ManagedDragOutAction);
+        if (ViewModel.IsVirtualGroup)
+        {
+            // Virtual group files are referenced in place: advertise Copy
+            // only so no target can resolve the drop to a Move of the
+            // original. Release of the reference happens on completion.
+            e.AllowedOperations = DataPackageOperation.Copy;
+            _activeDragAllowedOperations = e.AllowedOperations;
+            e.Data.RequestedOperation = DataPackageOperation.Copy;
+        }
+
         _sourceDragSession.Begin(_activeDragSessionId);
         MaybeShowDragOutModifierTip(e.AllowedOperations);
         // The OLE IDataObject cannot expose the in-app token to our own
@@ -1473,6 +1483,24 @@ public sealed partial class FileSurfaceContent :
         {
             if (launchedFromCompletedDrag || _isDisposed)
             {
+                return;
+            }
+
+            if (ViewModel.IsVirtualGroup)
+            {
+                // Dropped outside this surface (desktop or another window):
+                // release the references only. Never a Move, never a
+                // reconciliation that could prune the stored paths.
+                if (!fromStackPopover &&
+                    !handledAsStackMembership &&
+                    !_isSurfaceReorderDragActive &&
+                    dropResult != DataPackageOperation.None &&
+                    movedPaths.Length > 0)
+                {
+                    ViewModel.ReleaseVirtualPaths(movedPaths);
+                    UpdateEmptyState();
+                }
+
                 return;
             }
 

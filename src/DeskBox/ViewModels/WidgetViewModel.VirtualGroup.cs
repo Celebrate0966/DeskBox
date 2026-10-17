@@ -211,6 +211,24 @@ public partial class WidgetViewModel
         return paths.Length;
     }
 
+    /// <summary>
+    /// Drag-out release: drops the references for the given paths and reveals
+    /// desktop files again. Files are never moved.
+    /// </summary>
+    public int ReleaseVirtualPaths(IEnumerable<string> paths)
+    {
+        if (!Config.IsVirtualGroup)
+        {
+            return 0;
+        }
+
+        HashSet<string> wanted = paths.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        WidgetItem[] items = Items
+            .Where(item => wanted.Contains(item.Path))
+            .ToArray();
+        return RemoveVirtualReferences(items);
+    }
+
     /// <summary>Keeps the stored reference in step with a physical rename.</summary>
     private void UpdateVirtualReference(string oldPath, string newPath)
     {
