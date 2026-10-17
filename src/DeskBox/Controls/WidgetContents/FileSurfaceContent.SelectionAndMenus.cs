@@ -1061,6 +1061,18 @@ public sealed partial class FileSurfaceContent
         }
         flyout.Items.Add(CreateStackSettingsMenu());
 
+        var virtualGroup = new ToggleMenuFlyoutItem
+        {
+            Text = T("Widget.VirtualGroupMode"),
+            IsChecked = ViewModel.IsVirtualGroup
+        };
+        virtualGroup.Click += async (_, _) =>
+        {
+            flyout.Hide();
+            await RunAsync(() => ViewModel.SetVirtualGroupAsync(virtualGroup.IsChecked));
+        };
+        flyout.Items.Add(virtualGroup);
+
         MenuFlyoutItem openFolder = CreateMenuItem(
             "Widget.OpenStorageFolder",
             "\uE838");

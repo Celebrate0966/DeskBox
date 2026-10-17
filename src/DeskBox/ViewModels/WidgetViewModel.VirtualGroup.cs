@@ -15,6 +15,29 @@ public partial class WidgetViewModel
 
     public bool IsVirtualGroup => Config.IsVirtualGroup;
 
+    /// <summary>
+    /// Switches virtual group mode, persists it and reloads the item list from
+    /// the matching source (referenced paths or the managed folder).
+    /// </summary>
+    public async Task SetVirtualGroupAsync(bool enabled)
+    {
+        if (_isDisposed || Config.IsVirtualGroup == enabled)
+        {
+            return;
+        }
+
+        Config.IsVirtualGroup = enabled;
+        _settingsService.UpdateWidget(Config);
+        OnPropertyChanged(nameof(IsVirtualGroup));
+        if (string.IsNullOrEmpty(CurrentFolderPath))
+        {
+            return;
+        }
+
+        await ConfigureFolderWatchersAsync(CurrentFolderPath);
+        await ReloadFolderContentsAsync(CurrentFolderPath);
+    }
+
     private static string NormalizeVirtualPath(string path) => Path.GetFullPath(path);
 
     /// <summary>

@@ -1474,6 +1474,7 @@
   "Widget.AddFile": "फ़ाइलें जोड़ें",
   "Widget.ChangeMappedPath": "मैप किया गया पथ बदलें",
   "Widget.IconView": "चिह्न दृश्य",
+  "Widget.VirtualGroupMode": "Virtual group mode (don't move files)",
   "Widget.ListView": "सूची दृश्य",
   "Widget.LockPosition": "लॉक स्थिति",
   "Widget.LockSize": "लॉक का आकार",

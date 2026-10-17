@@ -1471,6 +1471,7 @@
   "Widget.AddFile": "ファイルを追加",
   "Widget.ChangeMappedPath": "マップパスを変更",
   "Widget.IconView": "アイコン表示",
+  "Widget.VirtualGroupMode": "Virtual group mode (don't move files)",
   "Widget.ListView": "リスト表示",
   "Widget.LockPosition": "位置をロック",
   "Widget.LockSize": "サイズをロック",

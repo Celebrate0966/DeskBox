@@ -1474,6 +1474,7 @@
   "Widget.AddFile": "Добавить файлы",
   "Widget.ChangeMappedPath": "Изменить сопоставленный путь",
   "Widget.IconView": "Просмотр значков",
+  "Widget.VirtualGroupMode": "Virtual group mode (don't move files)",
   "Widget.ListView": "Просмотр списка",
   "Widget.LockPosition": "Зафиксировать положение",
   "Widget.LockSize": "Размер блокировки",

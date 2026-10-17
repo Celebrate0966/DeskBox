@@ -1474,6 +1474,7 @@
   "Widget.AddFile": "Ajouter des fichiers",
   "Widget.ChangeMappedPath": "Modifier le chemin mappé",
   "Widget.IconView": "Vue par icône",
+  "Widget.VirtualGroupMode": "Virtual group mode (don't move files)",
   "Widget.ListView": "Vue en liste",
   "Widget.LockPosition": "Position de verrouillage",
   "Widget.LockSize": "Taille du verrou",

@@ -1004,6 +1004,7 @@
   "Settings.Update.StoreInstall": "商店更新",
   "Todo.Reminder.OneDayBefore": "1 天前",
   "Widget.IconView": "图标视图",
+  "Widget.VirtualGroupMode": "虚拟分组模式（不移动文件）",
   "Settings.Capsule.HoverResponse.Description": "控制鼠标停在标题区域多久后展开，以及移出后多久收起",
   "Widget.Migration.Description": "完成前请勿操作",
   "Settings.FileStacks.Custom.MoveUp": "提高优先级",
