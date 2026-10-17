@@ -1,0 +1,35 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    name: Publish Release (win-x64)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore .\src\DeskBox\DeskBox.csproj -p:Platform=x64 -p:RuntimeIdentifier=win-x64
+
+      - name: Publish
+        run: dotnet publish .\src\DeskBox\DeskBox.csproj --configuration Release --no-restore -p:Platform=x64 -p:RuntimeIdentifier=win-x64 -o .\publish -v:minimal
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DeskBox-win-x64
+          path: publish/
+          if-no-files-found: error
