@@ -22,13 +22,19 @@ jobs:
         with:
           global-json-file: global.json
 
+      # The main project builds DeskBox.Updater through MSBuild, so restore the
+      # whole solution (same as ci.yml) to generate both projects' assets files.
+      - name: Restore
+        shell: pwsh
+        run: dotnet restore .\DeskBox.sln -p:Platform=x64 -p:RuntimeIdentifier=win-x64
+
       # The Rust thumbnail proxy needs an external cargo toolchain; skip it for
       # the unsigned CI build so a missing toolchain cannot fail the publish.
       - name: Publish
         shell: pwsh
         run: |
           dotnet publish .\src\DeskBox\DeskBox.csproj `
-            -c Release -r win-x64 --self-contained false `
+            -c Release -r win-x64 --self-contained false --no-restore `
             -p:Platform=x64 `
             -p:DeskBoxShellThumbnailProxy=false `
             -p:DeskBoxRustNative=false `
