@@ -1401,6 +1401,9 @@ public partial class App : Application
 
             try
             {
+                // Re-hide desktop files referenced by virtual group boxes.
+                await Task.Run(() => VirtualGroupDesktopVisibility.HideAll(
+                    SettingsService.Settings.Widgets.ToArray()));
                 await widgetManager.RestoreWidgetsAsync();
             }
             catch (Exception ex)
@@ -5485,6 +5488,20 @@ public partial class App : Application
         DeskBox.Platform.UiDispatch.MarkShutdown();
         TimeSpan shutdownGrace = TimeSpan.FromSeconds(15);
         return await _shutdownSequence.RunAsync(
+            ShutdownStep.Sync("virtual-group-restore", () =>
+            {
+                // Every exit path (tray exit, update, restart) funnels here;
+                // reveal desktop files so icons return after DeskBox quits.
+                try
+                {
+                    VirtualGroupDesktopVisibility.RestoreAll(
+                        SettingsService.Settings.Widgets.ToArray());
+                }
+                catch (Exception ex)
+                {
+                    Log($"[Shutdown] Virtual group restore failed: {ex.Message}");
+                }
+            }),
             ShutdownStep.Sync("backup-subscriptions", () =>
             {
                 SettingsService.SettingsChanged -= OnBackupSettingsChanged;

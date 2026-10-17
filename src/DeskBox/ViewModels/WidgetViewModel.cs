@@ -451,7 +451,6 @@ public partial class WidgetViewModel : ObservableObject, IDisposable
         _publicFolderWatcher.FolderIconChanged -= OnFolderIconChanged;
         _folderWatcher.Dispose();
         _publicFolderWatcher.Dispose();
-        StopVirtualGroupWatchers();
         // A debounced file-system callback may already be waiting on this gate.
         // Do not dispose it underneath that continuation; the view-model is
         // short-lived after this point and the waiter exits via _isDisposed.

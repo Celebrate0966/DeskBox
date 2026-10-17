@@ -7,12 +7,11 @@ namespace DeskBox.ViewModels;
 /// Virtual group mode: the widget references files by absolute path
 /// (<see cref="WidgetConfig.FilePaths"/>) and never moves or copies them, so
 /// project files (video edit projects, media) keep their physical location.
+/// Desktop files are hidden while referenced and revealed when released, on
+/// mode switch, and on application exit.
 /// </summary>
 public partial class WidgetViewModel
 {
-    private readonly Dictionary<string, FileSystemWatcher> _virtualGroupWatchers =
-        new(StringComparer.OrdinalIgnoreCase);
-
     public bool IsVirtualGroup => Config.IsVirtualGroup;
 
     /// <summary>
@@ -26,9 +25,11 @@ public partial class WidgetViewModel
             return;
         }
 
+        string[] referenced = Config.FilePaths.ToArray();
         Config.IsVirtualGroup = enabled;
         _settingsService.UpdateWidget(Config);
         OnPropertyChanged(nameof(IsVirtualGroup));
+        await Task.Run(() => VirtualGroupDesktopVisibility.SetHidden(referenced, hidden: enabled));
         if (string.IsNullOrEmpty(CurrentFolderPath))
         {
             return;
@@ -42,8 +43,9 @@ public partial class WidgetViewModel
 
     /// <summary>
     /// Records the dropped paths in <see cref="WidgetConfig.FilePaths"/> and
-    /// shows them. Nothing is moved; the caller receives an empty "moved"
-    /// list so source widgets and the desktop are left untouched.
+    /// shows them. Nothing is moved; desktop files are hidden in one batch.
+    /// The caller receives an empty "moved" list so source widgets and the
+    /// desktop are left untouched.
     /// </summary>
     private async Task<IReadOnlyList<string>> ImportVirtualPathsAsync(
         IReadOnlyList<string> paths,
@@ -83,6 +85,7 @@ public partial class WidgetViewModel
         }
 
         _settingsService.UpdateWidget(Config);
+        await Task.Run(() => VirtualGroupDesktopVisibility.SetHidden(added, hidden: true));
         int? nextIndex = preferredManualIndex;
         using (EnterItemMutationScope())
         {
@@ -97,10 +100,14 @@ public partial class WidgetViewModel
             }
         }
 
-        RefreshVirtualGroupWatchers();
         return [];
     }
 
+    /// <summary>
+    /// Loads the referenced paths. Entries whose file is currently missing are
+    /// skipped for display but stay in <see cref="WidgetConfig.FilePaths"/>, so
+    /// a transient disappearance never empties the box.
+    /// </summary>
     private async Task<bool> LoadVirtualGroupContentsAsync(
         CancellationToken cancellationToken,
         Action? beforeItemsReplaced)
@@ -117,7 +124,8 @@ public partial class WidgetViewModel
                 hideShortcutExtensionWhenShowingFileExtensions: _hideShortcutExtensionWhenShowingFileExtensions,
                 loadIcon: false,
                 loadFolderItemCount: false,
-                loadShortcutTarget: false);
+                loadShortcutTarget: false,
+                includeHidden: true);
             if (item is not null)
             {
                 items.Add(item);
@@ -141,114 +149,84 @@ public partial class WidgetViewModel
     }
 
     /// <summary>
-    /// Watches the directories that contain referenced files so a rename or
-    /// delete outside DeskBox is mirrored into <see cref="WidgetConfig.FilePaths"/>.
+    /// Physical delete: sends the real files to the Recycle Bin, then drops
+    /// the references of every file that is actually gone.
     /// </summary>
-    private void RefreshVirtualGroupWatchers()
+    public async Task<FileDeleteBatchResult> DeleteItemsAsync(
+        IEnumerable<WidgetItem> items,
+        bool recycle = true,
+        IntPtr ownerHandle = default)
     {
-        if (_isDisposed || !Config.IsVirtualGroup)
+        List<WidgetItem> targets = items
+            .Where(item => item is not null)
+            .Distinct()
+            .ToList();
+        FileDeleteBatchResult result = await DeleteItemsCoreAsync(targets, recycle, ownerHandle);
+        if (Config.IsVirtualGroup)
         {
-            StopVirtualGroupWatchers();
+            string[] gone = targets
+                .Select(item => item.Path)
+                .Where(path => !File.Exists(path) && !Directory.Exists(path))
+                .ToArray();
+            if (gone.Length > 0)
+            {
+                Config.FilePaths.RemoveAll(path =>
+                    gone.Contains(path, StringComparer.OrdinalIgnoreCase));
+                _settingsService.UpdateWidget(Config, notifySubscribers: false);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// "Move out of box": removes only the references and reveals any desktop
+    /// file again. Returns the number of released entries.
+    /// </summary>
+    private int RemoveVirtualReferences(IEnumerable<WidgetItem> items)
+    {
+        string[] paths = items
+            .Where(item => item is not null)
+            .Select(item => item.Path)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        if (paths.Length == 0)
+        {
+            return 0;
+        }
+
+        Config.FilePaths.RemoveAll(path =>
+            paths.Contains(path, StringComparer.OrdinalIgnoreCase));
+        using (EnterItemMutationScope())
+        {
+            foreach (string path in paths)
+            {
+                RemoveItemByPath(path);
+            }
+        }
+
+        RemoveStackMemberOverridePaths(paths);
+        _settingsService.UpdateWidget(Config, notifySubscribers: false);
+        _ = Task.Run(() => VirtualGroupDesktopVisibility.SetHidden(paths, hidden: false));
+        return paths.Length;
+    }
+
+    /// <summary>Keeps the stored reference in step with a physical rename.</summary>
+    private void UpdateVirtualReference(string oldPath, string newPath)
+    {
+        if (!Config.IsVirtualGroup)
+        {
             return;
         }
 
-        HashSet<string> wanted = Config.FilePaths
-            .Select(Path.GetDirectoryName)
-            .Where(dir => !string.IsNullOrEmpty(dir) && Directory.Exists(dir))
-            .Select(dir => dir!)
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        foreach (string stale in _virtualGroupWatchers.Keys.Where(dir => !wanted.Contains(dir)).ToArray())
-        {
-            _virtualGroupWatchers[stale].Dispose();
-            _virtualGroupWatchers.Remove(stale);
-        }
-
-        foreach (string directory in wanted)
-        {
-            if (_virtualGroupWatchers.ContainsKey(directory))
-            {
-                continue;
-            }
-
-            try
-            {
-                var watcher = new FileSystemWatcher(directory)
-                {
-                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName,
-                    IncludeSubdirectories = false,
-                    EnableRaisingEvents = false
-                };
-                watcher.Renamed += (_, e) => PostVirtualChange(() => ApplyVirtualRename(e.OldFullPath, e.FullPath));
-                watcher.Deleted += (_, e) => PostVirtualChange(() => ApplyVirtualDelete(e.FullPath));
-                watcher.EnableRaisingEvents = true;
-                _virtualGroupWatchers[directory] = watcher;
-            }
-            catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
-            {
-                App.Log($"[VirtualGroup] Watcher unavailable dir='{directory}' {ex.GetType().Name}");
-            }
-        }
-    }
-
-    private void StopVirtualGroupWatchers()
-    {
-        foreach (FileSystemWatcher watcher in _virtualGroupWatchers.Values)
-        {
-            watcher.Dispose();
-        }
-
-        _virtualGroupWatchers.Clear();
-    }
-
-    private void PostVirtualChange(Action apply)
-    {
-        // FileSystemWatcher raises on a thread-pool thread; the item list and
-        // config belong to the UI thread.
-        _dispatcherQueue.TryEnqueue(() =>
-        {
-            if (!_isDisposed && Config.IsVirtualGroup)
-            {
-                apply();
-            }
-        });
-    }
-
-    private void ApplyVirtualDelete(string path)
-    {
         int index = Config.FilePaths.FindIndex(
-            p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase));
+            path => string.Equals(path, oldPath, StringComparison.OrdinalIgnoreCase));
         if (index < 0)
         {
             return;
         }
 
-        Config.FilePaths.RemoveAt(index);
-        RemoveItemByPath(path);
+        Config.FilePaths[index] = newPath;
         _settingsService.UpdateWidget(Config, notifySubscribers: false);
-        RefreshVirtualGroupWatchers();
-    }
-
-    private async void ApplyVirtualRename(string oldPath, string newPath)
-    {
-        try
-        {
-            int index = Config.FilePaths.FindIndex(
-                p => string.Equals(p, oldPath, StringComparison.OrdinalIgnoreCase));
-            if (index < 0)
-            {
-                return;
-            }
-
-            Config.FilePaths[index] = newPath;
-            RemoveItemByPath(oldPath);
-            await UpsertFolderItemAsync(newPath);
-            _settingsService.UpdateWidget(Config, notifySubscribers: false);
-            RefreshVirtualGroupWatchers();
-        }
-        catch (Exception ex)
-        {
-            App.Log($"[VirtualGroup] Rename sync failed {ex.GetType().Name}: {ex.Message}");
-        }
     }
 }

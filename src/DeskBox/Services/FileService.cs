@@ -819,10 +819,11 @@ public sealed partial class FileService
         bool hideShortcutExtensionWhenShowingFileExtensions = true,
         bool loadIcon = true,
         bool loadFolderItemCount = true,
-        bool loadShortcutTarget = true)
+        bool loadShortcutTarget = true,
+        bool includeHidden = false)
     {
         FileSystemEntrySnapshot? entry = await Task.Run(() =>
-            ShouldDisplayEntry(path)
+            (includeHidden ? (File.Exists(path) || Directory.Exists(path)) : ShouldDisplayEntry(path))
                 ? CaptureEntrySnapshot(path, loadFolderItemCount)
                 : null);
         if (entry is null)

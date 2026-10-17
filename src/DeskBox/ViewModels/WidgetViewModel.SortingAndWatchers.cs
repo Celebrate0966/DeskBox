@@ -299,9 +299,8 @@ public partial class WidgetViewModel
 
         if (Config.IsVirtualGroup)
         {
-            // Referenced files live in arbitrary folders; watch those instead
-            // of the (empty) managed folder.
-            RefreshVirtualGroupWatchers();
+            // Referenced files live in arbitrary folders; no folder watcher is
+            // attached, so attribute changes can never empty the box.
             return;
         }
 
@@ -685,7 +684,8 @@ public partial class WidgetViewModel
             hideShortcutExtensionWhenShowingFileExtensions: _hideShortcutExtensionWhenShowingFileExtensions,
             loadIcon: false,
             loadFolderItemCount: false,
-            loadShortcutTarget: false);
+            loadShortcutTarget: false,
+            includeHidden: Config.IsVirtualGroup);
         if (item is null)
         {
             // A null result can also mean an ACL/provider race. Incremental

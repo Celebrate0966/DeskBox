@@ -490,6 +490,11 @@ public partial class WidgetViewModel
         bool useShellProgress = false,
         IntPtr ownerWindowHandle = default)
     {
+        if (Config.IsVirtualGroup)
+        {
+            return RemoveVirtualReferences([item]);
+        }
+
         if (string.IsNullOrWhiteSpace(MappedFolderPath))
         {
             return 0;
@@ -516,6 +521,11 @@ public partial class WidgetViewModel
         bool useShellProgress = false,
         IntPtr ownerWindowHandle = default)
     {
+        if (Config.IsVirtualGroup)
+        {
+            return RemoveVirtualReferences(items);
+        }
+
         if (string.IsNullOrWhiteSpace(MappedFolderPath))
         {
             return 0;
@@ -782,6 +792,7 @@ public partial class WidgetViewModel
             }
 
             await _fileService.RenameEntryAsync(sourcePath, destinationPath);
+            UpdateVirtualReference(sourcePath, destinationPath);
             TransferFileAddedAt(sourcePath, destinationPath);
             var refreshedItem = await _fileService.CreateWidgetItemAsync(
                 destinationPath,
@@ -832,7 +843,7 @@ public partial class WidgetViewModel
         }
     }
 
-    public async Task<FileDeleteBatchResult> DeleteItemsAsync(
+    private async Task<FileDeleteBatchResult> DeleteItemsCoreAsync(
         IEnumerable<WidgetItem> items,
         bool recycle = true,
         IntPtr ownerHandle = default)
