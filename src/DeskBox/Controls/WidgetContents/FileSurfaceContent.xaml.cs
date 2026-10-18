@@ -1364,9 +1364,18 @@ public sealed partial class FileSurfaceContent :
             // Virtual group files are referenced in place: advertise Copy
             // only so no target can resolve the drop to a Move of the
             // original. Release of the reference happens on completion.
-            e.AllowedOperations = DataPackageOperation.Copy;
+            // Desktop-resident files advertise no operation: a Copy dropped on
+            // the desktop makes Explorer duplicate the file beside itself
+            // ("name (1)"). Their release is resolved by cursor position on
+            // completion instead.
+            bool allOnDesktop = result.SourcePaths.Count > 0 &&
+                result.SourcePaths.All(VirtualGroupDesktopVisibility.IsOnDesktop);
+            DataPackageOperation virtualOperation = allOnDesktop
+                ? DataPackageOperation.None
+                : DataPackageOperation.Copy;
+            e.AllowedOperations = virtualOperation;
             _activeDragAllowedOperations = e.AllowedOperations;
-            e.Data.RequestedOperation = DataPackageOperation.Copy;
+            e.Data.RequestedOperation = virtualOperation;
         }
 
         _sourceDragSession.Begin(_activeDragSessionId);
@@ -1494,8 +1503,11 @@ public sealed partial class FileSurfaceContent :
                 if (!fromStackPopover &&
                     !handledAsStackMembership &&
                     !_isSurfaceReorderDragActive &&
-                    dropResult != DataPackageOperation.None &&
-                    movedPaths.Length > 0)
+                    movedPaths.Length > 0 &&
+                    (movedPaths.All(VirtualGroupDesktopVisibility.IsOnDesktop)
+                        ? Win32Helper.GetCursorPos(out Win32Helper.POINT cursor) &&
+                          DesktopBlankHitTest.IsBlankDesktopPoint(cursor)
+                        : dropResult != DataPackageOperation.None))
                 {
                     ViewModel.ReleaseVirtualPaths(movedPaths);
                     UpdateEmptyState();
