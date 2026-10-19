@@ -1472,6 +1472,8 @@
   "Widget.ChangeMappedPath": "マップパスを変更",
   "Widget.IconView": "アイコン表示",
   "Widget.VirtualGroupMode": "Virtual group mode (don't move files)",
+  "Widget.VirtualGroupCloseInfo": "This virtual group references {0} files. Closing restores them on the desktop; the files are not deleted.",
+  "Widget.VirtualGroupCloseRestore": "Restore to desktop and close",
   "Widget.ListView": "リスト表示",
   "Widget.LockPosition": "位置をロック",
   "Widget.LockSize": "サイズをロック",

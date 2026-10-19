@@ -573,6 +573,17 @@ public sealed partial class ContentWidgetWindow
         // widget. The policy fails closed: an unknown entry count keeps the
         // selection flow, and the actual deletion still goes through the
         // recycle bin plus the manager's managed-root re-validation.
+        // A virtual group never stores files in its managed folder, so an
+        // empty folder says nothing; referenced files are hidden on the desktop
+        // and must be confirmed and revealed on close.
+        if (_config.IsVirtualGroup && _config.FilePaths.Count > 0)
+        {
+            ShowFlyoutWithInteraction(
+                CreateVirtualGroupCloseFlyout(),
+                target);
+            return;
+        }
+
         bool canCleanupManagedStorage =
             widgetManager.CanCleanupManagedStorageForWidget(_config.Id);
         int? managedFolderEntryCount = canCleanupManagedStorage
@@ -765,6 +776,40 @@ public sealed partial class ContentWidgetWindow
         return flyout;
     }
 
+    private MenuFlyout CreateVirtualGroupCloseFlyout()
+    {
+        LocalizationService localization = App.Current.LocalizationService;
+        var flyout = new MenuFlyout
+        {
+            ShouldConstrainToRootBounds = false
+        };
+        flyout.Items.Add(new MenuFlyoutItem
+        {
+            Text = localization.Format(
+                "Widget.DeleteWidgetTitle",
+                _config.Name),
+            Icon = new FontIcon { Glyph = "" },
+            IsEnabled = false
+        });
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(new MenuFlyoutItem
+        {
+            Text = localization.Format(
+                "Widget.VirtualGroupCloseInfo",
+                _config.FilePaths.Count),
+            Icon = new FontIcon { Glyph = "" },
+            IsEnabled = false
+        });
+        flyout.Items.Add(CreateFileWidgetCloseAction(
+            localization.T("Widget.VirtualGroupCloseRestore"),
+            WidgetRemovalAction.RemoveWidgetOnly,
+            "",
+            isDanger: false));
+        flyout.Items.Add(new MenuFlyoutSeparator());
+        flyout.Items.Add(CreateFileWidgetCloseCancel(flyout));
+        return flyout;
+    }
+
     private MenuFlyoutItem CreateFileWidgetCloseAction(
         string text,
         WidgetRemovalAction removalAction,
@@ -876,10 +921,20 @@ public sealed partial class ContentWidgetWindow
         _isCloseWidgetPending = true;
         try
         {
+            string[] virtualPaths = _config.IsVirtualGroup
+                ? _config.FilePaths.ToArray()
+                : [];
             await widgetManager.RemoveWidgetAsync(
                 _config.Id,
                 removalAction,
                 HWnd);
+            if (virtualPaths.Length > 0)
+            {
+                // Files never moved; just reveal the hidden desktop entries.
+                await Task.Run(() => VirtualGroupDesktopVisibility.SetHidden(
+                    virtualPaths,
+                    hidden: false));
+            }
         }
         catch (Exception ex)
         {

@@ -1472,6 +1472,8 @@
   "Widget.ChangeMappedPath": "Alterar caminho mapeado",
   "Widget.IconView": "Exibição em ícones",
   "Widget.VirtualGroupMode": "Virtual group mode (don't move files)",
+  "Widget.VirtualGroupCloseInfo": "This virtual group references {0} files. Closing restores them on the desktop; the files are not deleted.",
+  "Widget.VirtualGroupCloseRestore": "Restore to desktop and close",
   "Widget.ListView": "Exibição em lista",
   "Widget.LockPosition": "Bloquear posição",
   "Widget.LockSize": "Bloquear tamanho",
