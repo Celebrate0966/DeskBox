@@ -992,6 +992,8 @@ public sealed partial class WidgetManager
             MappedFolderPath = folderPath,
             FollowsDefaultStoragePath = true,
             ManagedFolderName = managedFolderName,
+            // New boxes default to virtual group mode (files stay in place).
+            IsVirtualGroup = true,
             BoundsCoordinateVersion = WidgetConfig.CurrentBoundsCoordinateVersion,
             Width = _settingsService.Settings.DefaultWidgetWidth,
             Height = _settingsService.Settings.DefaultWidgetHeight
