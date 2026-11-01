@@ -1,4 +1,4 @@
-﻿﻿using DeskBox.Models;
+using DeskBox.Models;
 using DeskBox.Helpers;
 using DeskBox.Contracts;
 using DeskBox.Controls.WidgetContents;
@@ -603,6 +603,11 @@ public sealed partial class WidgetManager
                 SetWeatherFeatureWidgetEnabledAsync,
                 () => HideAndCloseFeatureWidgetAsync(WidgetKind.Weather)),
             new(
+                WidgetKind.SystemMonitor,
+                async _ => await CreateSingletonContentFeatureWidgetAsync(WidgetKind.SystemMonitor),
+                (enabled, reveal) => SetContentFeatureWidgetEnabledAsync(WidgetKind.SystemMonitor, enabled, reveal),
+                () => HideAndCloseFeatureWidgetAsync(WidgetKind.SystemMonitor)),
+            new(
                 WidgetKind.Search,
                 async _ => await CreateSingletonContentFeatureWidgetAsync(WidgetKind.Search),
                 SetSearchFeatureWidgetEnabledAsync,
@@ -655,6 +660,14 @@ public sealed partial class WidgetManager
                     request.CancellationToken)),
             new(
                 WidgetKind.Weather,
+                async request => await CreateContentWidgetFromConfigAsync(
+                    request.Config,
+                    request.KeepPreparedForAnimation,
+                    request.RevealAfterCreate,
+                    request.ShowRaisedWhileInitializing,
+                    request.CancellationToken)),
+            new(
+                WidgetKind.SystemMonitor,
                 async request => await CreateContentWidgetFromConfigAsync(
                     request.Config,
                     request.KeepPreparedForAnimation,
@@ -983,7 +996,7 @@ public sealed partial class WidgetManager
             : name;
         string managedFolderName = CreateManagedFolderName(name);
         string folderPath = BuildManagedFolderPath(managedFolderName);
-        Directory.CreateDirectory(folderPath);
+        folderPath = EnsureManagedFolderWritable(folderPath, managedFolderName);
 
         var config = new WidgetConfig
         {
