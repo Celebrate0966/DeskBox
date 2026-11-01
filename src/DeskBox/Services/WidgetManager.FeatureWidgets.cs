@@ -1,4 +1,4 @@
-﻿﻿// Copyright (c) DeskBox. All rights reserved.
+// Copyright (c) DeskBox. All rights reserved.
 
 using DeskBox.Models;
 using DeskBox.Helpers;
@@ -424,6 +424,7 @@ public sealed partial class WidgetManager
                 WidgetKind.Weather => 200,
                 WidgetKind.Search => 280,
                 WidgetKind.Glance => 360,
+                WidgetKind.SystemMonitor => 360,
                 _ => Math.Max(_settingsService.Settings.DefaultWidgetWidth, 320)
             },
             Height = kind switch
@@ -432,6 +433,7 @@ public sealed partial class WidgetManager
                 WidgetKind.Weather => 200,
                 WidgetKind.Search => 90,
                 WidgetKind.Glance => 260,
+                WidgetKind.SystemMonitor => 760,
                 _ => Math.Max(_settingsService.Settings.DefaultWidgetHeight, 360)
             }
         };
